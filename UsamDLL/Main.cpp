@@ -50,17 +50,17 @@ DWORD FindValue(std::string moduleName, DWORD value){
 	return 0;
 }
 
-DWORD FindValueEx(DWORD value) {
+DWORD FindValueEx(DWORD * value) {
 	SYSTEM_INFO	si;
 	GetSystemInfo(&si);
 	DWORD pCur = 0;
 	MEMORY_BASIC_INFORMATION info;
 	while (pCur < (DWORD)si.lpMaximumApplicationAddress) {
-		if(!VirtualQuery((LPCVOID)pCur, &info, sizeof(info))) return 0;
-		if (((info.State & MEM_COMMIT) != 0) && ((info.Protect & PAGE_READWRITE) == info.Protect) && ((info.Type & MEM_PRIVATE) != 0)) {
+		if (!VirtualQueryEx(GetCurrentProcess(), (LPCVOID)pCur, &info, sizeof(info))) return 0;
+		if (info.State & MEM_COMMIT && PAGE_READWRITE == info.Protect && info.Type & MEM_PRIVATE) {
 			for (pCur = (DWORD)info.BaseAddress; pCur < (DWORD)info.BaseAddress + (DWORD)info.RegionSize; pCur += sizeof(pCur)) {
 				__try {
-					if (*(DWORD*)pCur == value) return pCur;
+					if (*(DWORD*)pCur == *value && pCur != (DWORD)value) return pCur; // it was finding itself on stack and the original variable lamao
 				} __except (EXCEPTION_EXECUTE_HANDLER) {};
 			}
 		}
@@ -154,19 +154,24 @@ DWORD WINAPI DebugThread(LPVOID arg) {
 	return FALSE;
 }
 
+enum ERRORS{
+	ERR_OK = 0,
+	ERR_CLICK_HANDLER_PATERN_FAIL = 1,
+};
+
 DWORD WINAPI MainThread(LPVOID hModule) {
 	printf("injected\n");
 	DWORD clickHandler = FindPattern("steamui.dll", "55 8B EC 53 8B 1D ?? ?? ?? ?? 56 57 8B 7D 08 8B F1 68 FF FF FF 7F 68 ?? ?? ?? ?? 57 FF D3 83 C4 0C 85 C0 75 12 8D 8E EC FE FF FF E8 ?? ?? ?? ?? 5F 5E 5B 5D C2 04 00");
 	DWORD loginBtnClickHandler = clickHandler + 48 + *(int*)(clickHandler + 44);
-	DWORD loginWindowVtable = FindValue("steamui.dll", clickHandler) - 0x108;//index 66
-	DWORD windowObject = FindValueEx(loginWindowVtable);
-	DWORD NotificationFrame = windowObject + 0x114;
+	DWORD CSteamLoginDialogVtable = FindValue("steamui.dll", clickHandler) - 0x108;//index 66
+	DWORD CSteamLoginDialogObject = FindValueEx(&CSteamLoginDialogVtable);
+	DWORD NotificationFrame = CSteamLoginDialogObject + 0x114;
 	DWORD SetText = *(DWORD*)(*(DWORD*)NotificationFrame + 0x220);//index 88
-	printf("ch: %X\nlh: %X\nvt: %X\nwo: %X\nnf: %X\nst: %X\n", clickHandler, loginBtnClickHandler, loginWindowVtable, windowObject, NotificationFrame, SetText);
+	printf("ch: %X\nlh: %X\nvt: %X\nwo: %X\nnf: %X\nst: %X\n", clickHandler, loginBtnClickHandler, CSteamLoginDialogVtable, CSteamLoginDialogObject, NotificationFrame, SetText);
 	DWORD AuthCodeEnteredHandler = FindPattern("steamui.dll", "55 8B EC 81 EC 80 00 00 00 56 68 FF FF FF 7F 68 ?? ?? ?? ?? FF 75 08 8B F1 FF 15");
 	DWORD TwoFactorCodeChallengeVtable = FindValue("steamui.dll", AuthCodeEnteredHandler) - 0xA0;//index 28
-	DWORD TwoFactorCodeChallengeObject = FindValueEx(TwoFactorCodeChallengeVtable);
-	DWORD AuthInputField = *(DWORD*)(TwoFactorCodeChallengeObject + 0x218);
+	DWORD TwoFactorCodeChallengeObject = FindValueEx(&TwoFactorCodeChallengeVtable);
+	DWORD AuthInputField = 0;// *(DWORD*)(TwoFactorCodeChallengeObject + 0x218);
 	DWORD AuthUtf32text = AuthInputField + 0xF8;
 	DWORD AutchTextLen = AuthInputField + 0x104;
 	printf("\nah: %X\nvt: %X\nao: %X\nif: %X\ntxt: %X\nl: %X\n", AuthCodeEnteredHandler, TwoFactorCodeChallengeVtable, TwoFactorCodeChallengeObject, AuthInputField, AuthUtf32text, AutchTextLen);
@@ -179,37 +184,37 @@ DWORD WINAPI MainThread(LPVOID hModule) {
 	DWORD RetardedFunction3 = *(DWORD*)(TwoFactorCodeChallengeVtable + 0x27C);//index 159
 	printf("\ngro: %X\nro: %X\nro2: %X\nrf2: %X\nrf3: %X\n", GetRetardObject, RetardObject, RetardedObject2, ReterdedFuction2, RetardedFunction3);
 	printf("\nXD: %X\n", (DWORD)&MainThread);
-	system("pause");
-	static const char* code = "";
-	std::u32string str = to_utf32(code);
-	char* utf32str = new char[str.size() * sizeof(char32_t)];
-	memcpy(utf32str, str.data(), str.size() * sizeof(char32_t));
-	*(DWORD*)AuthUtf32text = (DWORD)utf32str;
-	*(DWORD*)AutchTextLen = str.size();
-	(*(void(__thiscall * *)(void*, char*))(*(DWORD*)RetardObject + 0xD0))((void*)RetardObject, (char*)code);
-	((f_RetardedFunction2)ReterdedFuction2)((void*)RetardedObject2);
-	*(BYTE*)RetardedBool = (BYTE)1;
-	SuspendOtherThreads();
-	CreateThread(0, 0, DebugThread, (LPVOID)GetCurrentThreadId(), 0, 0);
-	((int(__thiscall*)(void*))RetardedFunction3)((void*)TwoFactorCodeChallengeObject);
-	printf("done\n");
-	/*
+	//system("pause");
+	//static const char* code = "";
+	//std::u32string str = to_utf32(code);
+	//char* utf32str = new char[str.size() * sizeof(char32_t)];
+	//memcpy(utf32str, str.data(), str.size() * sizeof(char32_t));
+	//*(DWORD*)AuthUtf32text = (DWORD)utf32str;
+	//*(DWORD*)AutchTextLen = str.size();
+	//(*(void(__thiscall * *)(void*, char*))(*(DWORD*)RetardObject + 0xD0))((void*)RetardObject, (char*)code);
+	//((f_RetardedFunction2)ReterdedFuction2)((void*)RetardedObject2);
+	//*(BYTE*)RetardedBool = (BYTE)1;
+	//SuspendOtherThreads();
+	//CreateThread(0, 0, DebugThread, (LPVOID)GetCurrentThreadId(), 0, 0);
+	//((int(__thiscall*)(void*))RetardedFunction3)((void*)TwoFactorCodeChallengeObject);
+	//printf("done\n");
+	///*
 
-	/*((f_SetText)SetText)((void*)NotificationFrame, "UserNameEdit", "dumbaspl", 0);
-	((f_SetText)SetText)((void*)NotificationFrame, "PasswordEdit", "", 0);
-	((OnLoginBtnClick)loginBtnClickHandler)((void*)windowObject);*/
-	
-	/*outfile.open("log.xd.txt", std::ofstream::out | std::ofstream::app);
-	Hook V_strnicmp;
-	DWORD proc = (DWORD)GetProcAddress(LoadLibrary("vstdlib_s.dll"), "V_strnicmp");
-	printf("%X\n", proc);
-	O_V_strnicmp = (f_V_strnicmp)V_strnicmp.HookFunction((void*)proc, &H_V_strnicmp, 7);
-	system("pause");
-	outfile.close();
-	V_strnicmp.Unhook();*/
-	while (true) {
-		Sleep(1000);
-	}
+	///*((f_SetText)SetText)((void*)NotificationFrame, "UserNameEdit", "dumbaspl", 0);
+	//((f_SetText)SetText)((void*)NotificationFrame, "PasswordEdit", "", 0);
+	//((OnLoginBtnClick)loginBtnClickHandler)((void*)windowObject);*/
+	//
+	///*outfile.open("log.xd.txt", std::ofstream::out | std::ofstream::app);
+	//Hook V_strnicmp;
+	//DWORD proc = (DWORD)GetProcAddress(LoadLibrary("vstdlib_s.dll"), "V_strnicmp");
+	//printf("%X\n", proc);
+	//O_V_strnicmp = (f_V_strnicmp)V_strnicmp.HookFunction((void*)proc, &H_V_strnicmp, 7);
+	//system("pause");
+	//outfile.close();
+	//V_strnicmp.Unhook();*/
+	//while (true) {
+	//	Sleep(1000);
+	//}
 	//FreeLibraryAndExitThread((HMODULE)hModule, 1);
 	return 0;
 }
