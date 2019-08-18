@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using SteamAuth;
 using System.Threading;
 using System.Runtime.InteropServices;
+using System.IO;
 
 namespace Ultimate_Steam_Acount_Manager
 {
@@ -43,11 +44,6 @@ namespace Ultimate_Steam_Acount_Manager
 
         private void Button1_Click_1(object sender, EventArgs e)
         {
-            IntPtr hwnd = FindWindow("Notepad", "Steam Guard - Computer Authorization Required");
-            SendMessage(hwnd, 0x0100, (IntPtr)'A', (IntPtr)0);
-            SendMessage(hwnd, 0x0102, (IntPtr)'A', (IntPtr)0);
-            SendMessage(hwnd, 0x0101, (IntPtr)'A', (IntPtr)0);
-            //MessageBox.Show("" + hwnd, "");
         }
 
         private void AddAccountToolStripMenuItem_Click(object sender, EventArgs e)

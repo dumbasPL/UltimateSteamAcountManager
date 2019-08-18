@@ -157,21 +157,31 @@ DWORD WINAPI DebugThread(LPVOID arg) {
 enum ERRORS{
 	ERR_OK = 0,
 	ERR_CLICK_HANDLER_PATERN_FAIL = 1,
+	ERR_AUTCH_CODE_HANDLER_PATERN_FAIL_1,
+	ERR_AUTCH_CODE_HANDLER_PATERN_FAIL_2,
 };
 
 DWORD WINAPI MainThread(LPVOID hModule) {
 	printf("injected\n");
+	while (!GetModuleHandleA("steamui.dll")) Sleep(100);
+	Sleep(1000);
 	DWORD clickHandler = FindPattern("steamui.dll", "55 8B EC 53 8B 1D ?? ?? ?? ?? 56 57 8B 7D 08 8B F1 68 FF FF FF 7F 68 ?? ?? ?? ?? 57 FF D3 83 C4 0C 85 C0 75 12 8D 8E EC FE FF FF E8 ?? ?? ?? ?? 5F 5E 5B 5D C2 04 00");
 	DWORD loginBtnClickHandler = clickHandler + 48 + *(int*)(clickHandler + 44);
 	DWORD CSteamLoginDialogVtable = FindValue("steamui.dll", clickHandler) - 0x108;//index 66
-	DWORD CSteamLoginDialogObject = FindValueEx(&CSteamLoginDialogVtable);
+	DWORD CSteamLoginDialogObject = 0;
+	while (!(CSteamLoginDialogObject = FindValueEx(&CSteamLoginDialogVtable))) Sleep(100);
 	DWORD NotificationFrame = CSteamLoginDialogObject + 0x114;
+	while (!*(DWORD*)NotificationFrame) Sleep(100);
 	DWORD SetText = *(DWORD*)(*(DWORD*)NotificationFrame + 0x220);//index 88
 	printf("ch: %X\nlh: %X\nvt: %X\nwo: %X\nnf: %X\nst: %X\n", clickHandler, loginBtnClickHandler, CSteamLoginDialogVtable, CSteamLoginDialogObject, NotificationFrame, SetText);
+	((f_SetText)SetText)((void*)NotificationFrame, "UserNameEdit", "dumbaspl", 0);
+	((f_SetText)SetText)((void*)NotificationFrame, "PasswordEdit", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", 0);
+	((OnLoginBtnClick)loginBtnClickHandler)((void*)CSteamLoginDialogObject);
 	DWORD AuthCodeEnteredHandler = FindPattern("steamui.dll", "55 8B EC 81 EC 80 00 00 00 56 68 FF FF FF 7F 68 ?? ?? ?? ?? FF 75 08 8B F1 FF 15");
 	DWORD TwoFactorCodeChallengeVtable = FindValue("steamui.dll", AuthCodeEnteredHandler) - 0xA0;//index 28
-	DWORD TwoFactorCodeChallengeObject = FindValueEx(&TwoFactorCodeChallengeVtable);
-	DWORD AuthInputField = 0;// *(DWORD*)(TwoFactorCodeChallengeObject + 0x218);
+	DWORD TwoFactorCodeChallengeObject = 0;
+	while (!(TwoFactorCodeChallengeObject = FindValueEx(&TwoFactorCodeChallengeVtable))) Sleep(100);
+	DWORD AuthInputField = *(DWORD*)(TwoFactorCodeChallengeObject + 0x218);
 	DWORD AuthUtf32text = AuthInputField + 0xF8;
 	DWORD AutchTextLen = AuthInputField + 0x104;
 	printf("\nah: %X\nvt: %X\nao: %X\nif: %X\ntxt: %X\nl: %X\n", AuthCodeEnteredHandler, TwoFactorCodeChallengeVtable, TwoFactorCodeChallengeObject, AuthInputField, AuthUtf32text, AutchTextLen);
@@ -185,19 +195,21 @@ DWORD WINAPI MainThread(LPVOID hModule) {
 	printf("\ngro: %X\nro: %X\nro2: %X\nrf2: %X\nrf3: %X\n", GetRetardObject, RetardObject, RetardedObject2, ReterdedFuction2, RetardedFunction3);
 	printf("\nXD: %X\n", (DWORD)&MainThread);
 	//system("pause");
-	//static const char* code = "";
-	//std::u32string str = to_utf32(code);
-	//char* utf32str = new char[str.size() * sizeof(char32_t)];
-	//memcpy(utf32str, str.data(), str.size() * sizeof(char32_t));
-	//*(DWORD*)AuthUtf32text = (DWORD)utf32str;
-	//*(DWORD*)AutchTextLen = str.size();
-	//(*(void(__thiscall * *)(void*, char*))(*(DWORD*)RetardObject + 0xD0))((void*)RetardObject, (char*)code);
-	//((f_RetardedFunction2)ReterdedFuction2)((void*)RetardedObject2);
-	//*(BYTE*)RetardedBool = (BYTE)1;
-	//SuspendOtherThreads();
-	//CreateThread(0, 0, DebugThread, (LPVOID)GetCurrentThreadId(), 0, 0);
-	//((int(__thiscall*)(void*))RetardedFunction3)((void*)TwoFactorCodeChallengeObject);
-	//printf("done\n");
+	static const char* code = "ASS";
+	std::u32string str = to_utf32(code);
+	char* utf32str = new char[str.size() * sizeof(char32_t)];
+	memcpy(utf32str, str.data(), str.size() * sizeof(char32_t));
+	*(DWORD*)AuthUtf32text = (DWORD)utf32str;
+	*(DWORD*)AutchTextLen = str.size();
+	(*(void(__thiscall * *)(void*, char*))(*(DWORD*)RetardObject + 0xD0))((void*)RetardObject, (char*)code);
+	((f_RetardedFunction2)ReterdedFuction2)((void*)RetardedObject2);
+	*(BYTE*)RetardedBool = (BYTE)1;
+	SuspendOtherThreads();
+	Sleep(100);
+	CreateThread(0, 0, DebugThread, (LPVOID)GetCurrentThreadId(), 0, 0);
+	Sleep(100);
+	((int(__thiscall*)(void*))RetardedFunction3)((void*)TwoFactorCodeChallengeObject);
+	printf("done\n");
 	///*
 
 	///*((f_SetText)SetText)((void*)NotificationFrame, "UserNameEdit", "dumbaspl", 0);
@@ -212,18 +224,16 @@ DWORD WINAPI MainThread(LPVOID hModule) {
 	//system("pause");
 	//outfile.close();
 	//V_strnicmp.Unhook();*/
-	//while (true) {
-	//	Sleep(1000);
-	//}
-	//FreeLibraryAndExitThread((HMODULE)hModule, 1);
+	Sleep(1000);
+	FreeLibraryAndExitThread((HMODULE)hModule, 1);
 	return 0;
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
 	if (ul_reason_for_call == DLL_PROCESS_ATTACH) {
-		AllocConsole();
+		/*AllocConsole();
 		freopen("CONOUT$", "w", stdout);
-		freopen("CONIN$", "r", stdin);
+		freopen("CONIN$", "r", stdin);*/
 		CreateThread(0, 0, MainThread, hModule, 0, 0);
 	}
 	return TRUE;
