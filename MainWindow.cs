@@ -11,6 +11,7 @@ using SteamAuth;
 using System.Threading;
 using System.Runtime.InteropServices;
 using System.IO;
+using System.Diagnostics;
 
 namespace Ultimate_Steam_Acount_Manager
 {
@@ -44,6 +45,8 @@ namespace Ultimate_Steam_Acount_Manager
 
         private void Button1_Click_1(object sender, EventArgs e)
         {
+            var p = Process.GetProcessesByName("notepad");
+            Injection.Inject(p[0], "..\\..\\Release\\UsamDLL.dll");
         }
 
         private void AddAccountToolStripMenuItem_Click(object sender, EventArgs e)

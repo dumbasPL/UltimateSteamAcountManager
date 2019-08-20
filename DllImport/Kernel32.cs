@@ -75,6 +75,14 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
         }
 
         [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool ReadProcessMemory(
+            IntPtr hProcess,
+            IntPtr lpBaseAddress,
+            [Out] byte[] lpBuffer,
+            int dwSize,
+            out IntPtr lpNumberOfBytesRead);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool WriteProcessMemory(
             IntPtr hProcess,
             IntPtr lpBaseAddress,
@@ -93,6 +101,20 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
         [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
         public static extern bool VirtualFreeEx(IntPtr hProcess, IntPtr lpAddress,
             int dwSize, AllocationType dwFreeType);
+
+        public static T StructFromProcessMemory<T>(IntPtr hProc, IntPtr address)
+        {
+            // Read in a byte array
+            byte[] bytes = new byte[Marshal.SizeOf(typeof(T))];
+            ReadProcessMemory(hProc, address, bytes, bytes.Length, out var @int);
+
+            // Pin the managed memory while, copy it out the data, then unpin it
+            GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+            T theStructure = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
+            handle.Free();
+
+            return theStructure;
+        }
 
     }
 }
