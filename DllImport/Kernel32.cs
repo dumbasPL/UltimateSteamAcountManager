@@ -116,5 +116,77 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
             return theStructure;
         }
 
+        [DllImport("kernel32", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
+        static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+        public static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        [DllImport("kernel32.dll")]
+        static extern IntPtr CreateRemoteThread(IntPtr hProcess,
+           IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress,
+           IntPtr lpParameter, uint dwCreationFlags, out IntPtr lpThreadId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern Int32 WaitForSingleObject(IntPtr hHandle, Int32 dwMilliseconds);
+
+        [DllImport("kernel32")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetExitCodeThread(IntPtr hThread, out uint lpExitCode);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool CloseHandle(IntPtr hObject);
+
+        public static IntPtr RemoteLoadLibraryA(IntPtr hProcess, string name)
+        {
+            int LenWrite = name.Length + 1;
+            IntPtr AllocMem = VirtualAllocEx(hProcess, IntPtr.Zero, (uint)LenWrite, AllocationType.Commit | AllocationType.Reserve, MemoryProtection.ExecuteReadWrite);
+            if (AllocMem == IntPtr.Zero) return IntPtr.Zero;
+            WriteProcessMemory(hProcess, AllocMem, name, LenWrite, out IntPtr _);
+            IntPtr Injector = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
+            if (Injector == IntPtr.Zero) return IntPtr.Zero;
+            IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, Injector, AllocMem, 0, out _);
+            WaitForSingleObject(hThread, 5000);
+            GetExitCodeThread(hThread, out uint hModule);
+            CloseHandle(hThread);
+            VirtualFreeEx(hProcess, AllocMem, 0, AllocationType.Release);
+            return (IntPtr)hModule;
+        }
+
+        private static IntPtr _GetProcAddress = IntPtr.Zero;
+
+        public static IntPtr RemoteGetProcAddress(IntPtr hProcess, IntPtr module, string name)
+        {
+            if(_GetProcAddress == IntPtr.Zero) _GetProcAddress = GetProcAddress(GetModuleHandle("kernel32.dll"), "GetProcAddress");
+            byte[] shellcode = new byte[] {
+                0x55,                           //push  ebp
+                0x89, 0xE5,                     //mov   ebp,esp
+                0x8B, 0x45, 0x08,               //mov   eax, DWORD PTR[ebp + 8]
+                0x50,                           //push  eax
+                0x68, 0x00, 0x00, 0x00, 0x00,   //push  module
+                0xb9, 0x00, 0x00, 0x00, 0x00,   //mov   ecx, <kernel32.GetProcAddress>
+                0xff, 0xd1,                     //call  ecx
+                0x5d,                           //pop   ebp
+                0xc2, 0x04, 0x00                //ret   0x4
+            };
+            Array.Copy(BitConverter.GetBytes((int)module), 0, shellcode, 8, 4);
+            Array.Copy(BitConverter.GetBytes((int)_GetProcAddress), 0, shellcode, 13, 4);
+            int memLen = shellcode.Length + name.Length + 1;
+            IntPtr pMem = VirtualAllocEx(hProcess, IntPtr.Zero, (uint)memLen, AllocationType.Commit | AllocationType.Reserve, MemoryProtection.ExecuteReadWrite);
+            if (pMem == IntPtr.Zero) return IntPtr.Zero;
+            byte[] buff = new byte[memLen];
+            shellcode.CopyTo(buff, 0);
+            Encoding.ASCII.GetBytes(name).CopyTo(buff, shellcode.Length);
+            buff[buff.Length - 1] = 0x00; //idk if i need this
+            if (!WriteProcessMemory(hProcess, pMem, buff, buff.Length, out _)) return IntPtr.Zero;
+            IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, pMem, pMem + shellcode.Length, 0, out _);
+            WaitForSingleObject(hThread, 5000);
+            GetExitCodeThread(hThread, out uint address);
+            CloseHandle(hThread);
+            VirtualFreeEx(hProcess, pMem, 0, AllocationType.Release);
+            return (IntPtr)address;
+        }
+
     }
 }

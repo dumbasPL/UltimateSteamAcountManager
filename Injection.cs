@@ -44,7 +44,7 @@ namespace Ultimate_Steam_Acount_Manager
                     stream.Seek(section.PointerToRawData, SeekOrigin.Begin);
                     byte[] data = new byte[section.SizeOfRawData];
                     if (stream.Read(data, 0, data.Length) != data.Length) throw new InjectionException("Filed to read section to memory", hProc, pTargetBase);
-                    if (!Kernel32.WriteProcessMemory(hProc, pTargetBase + (int)section.VirtualAddress, data, (int)section.SizeOfRawData, out var @int))
+                    if (!Kernel32.WriteProcessMemory(hProc, pTargetBase + (int)section.VirtualAddress, data, (int)section.SizeOfRawData, out _))
                         throw new InjectionException("Failed to write section to target process " + Marshal.GetLastWin32Error(), hProc, pTargetBase);
                     Console.WriteLine("mapped section " + section.Section + " in " + (pTargetBase + (int)section.VirtualAddress).ToString("X"));
                 }
@@ -57,7 +57,7 @@ namespace Ultimate_Steam_Acount_Manager
                     while (pRelocData.VirtualAddress != 0)
                     {
                         byte[] block = new byte[pRelocData.SizeOfBlock];
-                        Kernel32.ReadProcessMemory(hProc, pTargetBase + (int)currentOffset + Marshal.SizeOf<PeHeaderReader.IMAGE_BASE_RELOCATION>(), block, block.Length, out var @int9);
+                        Kernel32.ReadProcessMemory(hProc, pTargetBase + (int)currentOffset + Marshal.SizeOf<PeHeaderReader.IMAGE_BASE_RELOCATION>(), block, block.Length, out _);
                         BinaryReader reader1 = new BinaryReader(new MemoryStream(block));
                         int count = ((int)pRelocData.SizeOfBlock - Marshal.SizeOf<PeHeaderReader.IMAGE_BASE_RELOCATION>()) / sizeof(short);
                         for (int i = 0; i < count; i++)
@@ -68,10 +68,10 @@ namespace Ultimate_Steam_Acount_Manager
                             {
                                 uint addr = (uint)pTargetBase + pRelocData.VirtualAddress + (ushort)(relocation & 0xFFF);
                                 byte[] buff = new byte[4];
-                                if (!Kernel32.ReadProcessMemory(hProc, (IntPtr)addr, buff, buff.Length, out var @int))
+                                if (!Kernel32.ReadProcessMemory(hProc, (IntPtr)addr, buff, buff.Length, out _))
                                     throw new InjectionException("Failed to read process memory");
                                 buff = BitConverter.GetBytes(BitConverter.ToInt32(buff, 0) + LocationDelta);
-                                if (!Kernel32.WriteProcessMemory(hProc, (IntPtr)addr, buff, buff.Length, out var @int2))
+                                if (!Kernel32.WriteProcessMemory(hProc, (IntPtr)addr, buff, buff.Length, out _))
                                     throw new InjectionException("Failed to write process memory");
                             }
                         }
@@ -81,10 +81,11 @@ namespace Ultimate_Steam_Acount_Manager
                 }
 
 
+                //process.Modules[0].bas
+                IntPtr mod = Kernel32.RemoteLoadLibraryA(hProc, "kernel32.dll");
+                IntPtr fun = Kernel32.RemoteGetProcAddress(hProc, mod, "GetProcAddress");
 
-
-
-                System.Windows.Forms.MessageBox.Show("base: " + pTargetBase.ToString("X"), "pls");
+                System.Windows.Forms.MessageBox.Show("mod: " + mod.ToString("X") + " fun: " + fun.ToString("X"), "pls");
             }
             return true;
         }
