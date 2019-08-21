@@ -162,7 +162,7 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
             byte[] shellcode = new byte[] {
                 0x55,                           //push  ebp
                 0x89, 0xE5,                     //mov   ebp,esp
-                0x8B, 0x45, 0x08,               //mov   eax, DWORD PTR[ebp + 8]
+                0x8B, 0x45, 0x08,               //mov   eax, DWORD PTR[ebp+8]
                 0x50,                           //push  eax
                 0x68, 0x00, 0x00, 0x00, 0x00,   //push  module
                 0xb9, 0x00, 0x00, 0x00, 0x00,   //mov   ecx, <kernel32.GetProcAddress>
@@ -188,5 +188,108 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
             return (IntPtr)address;
         }
 
+        public static IntPtr RemoteGetProcAddress(IntPtr hProcess, IntPtr module, uint ordinal)
+        {
+            if (_GetProcAddress == IntPtr.Zero) _GetProcAddress = GetProcAddress(GetModuleHandle("kernel32.dll"), "GetProcAddress");
+            byte[] shellcode = new byte[] {
+                0x55,                           //push  ebp
+                0x89, 0xE5,                     //mov   ebp,esp
+                0x8B, 0x45, 0x08,               //mov   eax, DWORD PTR[ebp+8]
+                0x50,                           //push  eax
+                0x68, 0x00, 0x00, 0x00, 0x00,   //push  module
+                0xb9, 0x00, 0x00, 0x00, 0x00,   //mov   ecx, <kernel32.GetProcAddress>
+                0xff, 0xd1,                     //call  ecx
+                0x5d,                           //pop   ebp
+                0xc2, 0x04, 0x00                //ret   0x4
+            };
+            Array.Copy(BitConverter.GetBytes((int)module), 0, shellcode, 8, 4);
+            Array.Copy(BitConverter.GetBytes((int)_GetProcAddress), 0, shellcode, 13, 4);
+            IntPtr pMem = VirtualAllocEx(hProcess, IntPtr.Zero, (uint)shellcode.Length, AllocationType.Commit | AllocationType.Reserve, MemoryProtection.ExecuteReadWrite);
+            if (pMem == IntPtr.Zero) return IntPtr.Zero;
+            if (!WriteProcessMemory(hProcess, pMem, shellcode, shellcode.Length, out _)) return IntPtr.Zero;
+            IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, pMem, (IntPtr)ordinal, 0, out _);
+            WaitForSingleObject(hThread, 5000);
+            GetExitCodeThread(hThread, out uint address);
+            CloseHandle(hThread);
+            VirtualFreeEx(hProcess, pMem, 0, AllocationType.Release);
+            return (IntPtr)address;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct IMAGE_IMPORT_DESCRIPTOR
+        {
+            #region union
+            /// <summary>
+            /// CSharp doesnt really support unions, but they can be emulated by a field offset 0
+            /// </summary>
+
+            [FieldOffset(0)]
+            public uint Characteristics;            // 0 for terminating null import descriptor
+            [FieldOffset(0)]
+            public uint OriginalFirstThunk;         // RVA to original unbound IAT (PIMAGE_THUNK_DATA)
+            #endregion
+
+            [FieldOffset(4)]
+            public uint TimeDateStamp;
+            [FieldOffset(8)]
+            public uint ForwarderChain;
+            [FieldOffset(12)]
+            public IntPtr Name;
+            [FieldOffset(16)]
+            public uint FirstThunk;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct THUNK_DATA
+        {
+            [FieldOffset(0)]
+            public uint ForwarderString;      // PBYTE 
+            [FieldOffset(0)]
+            public uint Function;             // PDWORD
+            [FieldOffset(0)]
+            public uint Ordinal;
+            [FieldOffset(0)]
+            public IntPtr AddressOfData;        // PIMAGE_IMPORT_BY_NAME
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct IMAGE_IMPORT_BY_NAME
+        {
+            [FieldOffset(0)]
+            public ushort Hint;
+        }
+
+        public static string ReadCharPointerString(IntPtr hProcess, IntPtr pointer, int max_len = 512)
+        {
+            byte[] buff = new byte[max_len];
+            if (!ReadProcessMemory(hProcess, pointer, buff, buff.Length, out _)) return null;
+            int end = 0;
+            while (end < buff.Length && buff[end] != 0) end++;
+            return Encoding.ASCII.GetString(buff, 0, end);
+        }
+
+        public static void CallTlsCallback(IntPtr hProcess, IntPtr baseAddr, IntPtr callback)
+        {
+            byte[] shellcode = new byte[] {
+                0x55,                           //push  ebp
+                0x8B, 0xEC,                     //mov   ebp, esp
+                0x6A, 0x00,                     //push  0
+                0x6A, 0x01,                     //push  1
+                0x8B, 0x45, 0x08,               //mov   eax, dword ptr [ebp+8]
+                0x50,                           //push  eax
+                0xB9, 0x00, 0x00, 0x00, 0x00,   //mov   ecx, 0x69696969
+                0xFF, 0xD1,                     //call  ecx
+                0x5D,                           //pop   ebp
+                0xC2, 0x04, 0x00                //ret   4
+            };
+            Array.Copy(BitConverter.GetBytes((int)callback), 0, shellcode, 13, 4);
+            IntPtr pMem = VirtualAllocEx(hProcess, IntPtr.Zero, (uint)shellcode.Length, AllocationType.Commit | AllocationType.Reserve, MemoryProtection.ExecuteReadWrite);
+            if (pMem == IntPtr.Zero) return;
+            if (!WriteProcessMemory(hProcess, pMem, shellcode, shellcode.Length, out _)) return;
+            IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, pMem, baseAddr, 0, out _);
+            WaitForSingleObject(hThread, 5000);
+            CloseHandle(hThread);
+            VirtualFreeEx(hProcess, pMem, 0, AllocationType.Release);
+        }
     }
 }

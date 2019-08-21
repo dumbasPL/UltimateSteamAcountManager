@@ -79,13 +79,49 @@ namespace Ultimate_Steam_Acount_Manager
                         pRelocData = Kernel32.StructFromProcessMemory<PeHeaderReader.IMAGE_BASE_RELOCATION>(hProc, pTargetBase + (int)currentOffset);
                     }
                 }
+                if(peHeader.OptionalHeader32.ImportTable.Size != 0)
+                {
+                    uint currentOffset = peHeader.OptionalHeader32.ImportTable.VirtualAddress;
+                    var pImportDescr = Kernel32.StructFromProcessMemory<Kernel32.IMAGE_IMPORT_DESCRIPTOR>(hProc, pTargetBase + (int)currentOffset);
+                    while(pImportDescr.Name != IntPtr.Zero)
+                    {
+                        string module = Kernel32.ReadCharPointerString(hProc, pTargetBase + (int)pImportDescr.Name);
+                        if (module == null) throw new InjectionException("Failed to gte module name from IAT");
+                        IntPtr moduleBase = Kernel32.RemoteLoadLibraryA(hProc, module);
+                        if (moduleBase == IntPtr.Zero) throw new InjectionException("Filed to load Imported DLL into remote process");
 
+                        IntPtr pThunkRef = (IntPtr)pImportDescr.OriginalFirstThunk;
+                        IntPtr pFuncRef = (IntPtr)pImportDescr.FirstThunk;
 
-                //process.Modules[0].bas
-                IntPtr mod = Kernel32.RemoteLoadLibraryA(hProc, "kernel32.dll");
-                IntPtr fun = Kernel32.RemoteGetProcAddress(hProc, mod, "GetProcAddress");
+                        if (pThunkRef == IntPtr.Zero)
+                            pThunkRef = pFuncRef;
 
-                System.Windows.Forms.MessageBox.Show("mod: " + mod.ToString("X") + " fun: " + fun.ToString("X"), "pls");
+                        var ThunkRef = Kernel32.StructFromProcessMemory<Kernel32.THUNK_DATA>(hProc, pTargetBase + (int)pThunkRef);
+
+                        while (ThunkRef.AddressOfData != IntPtr.Zero)
+                        {
+                            IntPtr func = IntPtr.Zero;
+                            if ((ThunkRef.Ordinal & 0x80000000) > 0) //IMAGE_SNAP_BY_ORDINAL
+                                func = Kernel32.RemoteGetProcAddress(hProc, moduleBase, ThunkRef.Ordinal & (uint)0xffff);
+                            else
+                            {
+                                string funcName = Kernel32.ReadCharPointerString(hProc, pTargetBase + (int)ThunkRef.AddressOfData + 2); //skip the hint
+                                func = Kernel32.RemoteGetProcAddress(hProc, moduleBase, funcName);
+                            }
+                            if (func == IntPtr.Zero) throw new InjectionException("Filed to get Remote function adress");
+                            byte[] data = BitConverter.GetBytes((int)func);
+                            if (!Kernel32.WriteProcessMemory(hProc, pTargetBase + (int)pFuncRef, data, data.Length, out _))
+                                throw new InjectionException("Filed to write fuction adress to target process IAT");
+                            pThunkRef += 4;
+                            pFuncRef += 4;
+                            ThunkRef = Kernel32.StructFromProcessMemory<Kernel32.THUNK_DATA>(hProc, pTargetBase + (int)pThunkRef);
+                        }
+                        currentOffset += (uint)Marshal.SizeOf<Kernel32.IMAGE_IMPORT_DESCRIPTOR>();
+                        pImportDescr = Kernel32.StructFromProcessMemory<Kernel32.IMAGE_IMPORT_DESCRIPTOR>(hProc, pTargetBase + (int)currentOffset);
+                    }
+                }
+
+                System.Windows.Forms.MessageBox.Show("inject at: " + pTargetBase.ToString("X"), "pls");
             }
             return true;
         }
