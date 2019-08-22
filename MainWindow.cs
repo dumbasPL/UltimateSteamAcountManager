@@ -12,6 +12,7 @@ using System.Threading;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Diagnostics;
+using Microsoft.Win32;
 
 namespace Ultimate_Steam_Acount_Manager
 {
@@ -45,8 +46,18 @@ namespace Ultimate_Steam_Acount_Manager
 
         private void Button1_Click_1(object sender, EventArgs e)
         {
-            var p = Process.GetProcessesByName("steam");
-            Injection.Inject(p[0], "..\\..\\Release\\UsamDLL.dll");
+            using (RegistryKey key = Registry.CurrentUser.OpenSubKey("Software\\Valve\\Steam"))
+            {
+                if (key != null)
+                {
+                    Process p = Process.Start(new ProcessStartInfo()
+                    {
+                        FileName = key.GetValue("SteamExe").ToString(),
+                        WorkingDirectory = key.GetValue("SteamPath").ToString(),
+                    });
+                    Injection.Inject(p, "..\\..\\Release\\UsamDLL.dll", clickedAcc.Login, clickedAcc.Password, clickedAcc.Get2FACode());
+                }
+            }
         }
 
         private void AddAccountToolStripMenuItem_Click(object sender, EventArgs e)
@@ -95,12 +106,12 @@ namespace Ultimate_Steam_Acount_Manager
             new Thread(() => {
                 accounts = Manifest.GetManifest().GetAllAccounts(password, -1, progressForm);
                 if (progressForm != null)
-                {
-                    progressForm.Close();
-                    progressForm.Dispose();
-                    Enabled = true;
-                    BringToFront();
-                }
+                    Invoke(new Action(() => {
+                        progressForm.Close();
+                        progressForm.Dispose();
+                        Enabled = true;
+                        BringToFront();
+                    }));
                 if (accounts == null) return;
                 RenderAccounts(accounts);
             }).Start();
@@ -155,11 +166,11 @@ namespace Ultimate_Steam_Acount_Manager
 
         private void DataGridView1_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
+            string name = (string)dataGridView1.Rows[e.RowIndex].Cells["name"].Value;
+            clickedAcc = Util.GetAccountByName(accounts, name);
+            if (clickedAcc == null) return;
             if (e.Button == System.Windows.Forms.MouseButtons.Right && e.RowIndex != -1)
             {
-                string name = (string)dataGridView1.Rows[e.RowIndex].Cells["name"].Value;
-                clickedAcc = Util.GetAccountByName(accounts, name);
-                if (clickedAcc == null) return;
                 copyMobileAuthenticatorCodeToolStripMenuItem.Visible = !string.IsNullOrWhiteSpace(clickedAcc.SharedSecret);
                 contextMenuStrip1.Show(Cursor.Position.X, Cursor.Position.Y);
             }

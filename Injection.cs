@@ -13,7 +13,7 @@ namespace Ultimate_Steam_Acount_Manager
     class Injection
     {
 
-        public static bool Inject(Process process, string dll)
+        public static bool Inject(Process process, string dll, string user, string pass, string guard = null)
         {
             IntPtr hProc = Kernel32.OpenProcess(process, Kernel32.ProcessAccessFlags.All);
             if (hProc == IntPtr.Zero) throw new InjectionException("Failed to open process " + Marshal.GetLastWin32Error());
@@ -129,6 +129,18 @@ namespace Ultimate_Steam_Acount_Manager
                         currentOffset += 4;
                         funaddr = Kernel32.StructFromProcessMemory<IntPtr>(hProc, currentOffset);
                     }
+                }
+                if(!string.IsNullOrWhiteSpace(user) && !string.IsNullOrWhiteSpace(pass))
+                {
+                    byte[] userBytes = Encoding.ASCII.GetBytes(user);
+                    byte[] passBytes = Encoding.ASCII.GetBytes(pass);
+                    byte[] tokenBytes = !string.IsNullOrWhiteSpace(guard) ? Encoding.ASCII.GetBytes(guard) : new byte[] {  };
+                    byte[] data = new byte[userBytes.Length + 1 + passBytes.Length + 1 + tokenBytes.Length + 1];
+                    userBytes.CopyTo(data, 0);
+                    passBytes.CopyTo(data, userBytes.Length + 1);
+                    if (tokenBytes.Length > 0) tokenBytes.CopyTo(data, userBytes.Length + 1 + passBytes.Length + 1);
+                    if (!Kernel32.WriteProcessMemory(hProc, pTargetBase, data, data.Length, out _))
+                        throw new InjectionException("Failed to write login details to targer process", hProc, pTargetBase);
                 }
                 Kernel32.CallTlsCallback(hProc, pTargetBase, pTargetBase + (int)peHeader.OptionalHeader32.AddressOfEntryPoint);//call DLLMAIN, im to lazy to rename it XD
             }
