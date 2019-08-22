@@ -46,12 +46,10 @@ namespace Ultimate_Steam_Acount_Manager
                     if (stream.Read(data, 0, data.Length) != data.Length) throw new InjectionException("Filed to read section to memory", hProc, pTargetBase);
                     if (!Kernel32.WriteProcessMemory(hProc, pTargetBase + (int)section.VirtualAddress, data, (int)section.SizeOfRawData, out _))
                         throw new InjectionException("Failed to write section to target process " + Marshal.GetLastWin32Error(), hProc, pTargetBase);
-                    Console.WriteLine("mapped section " + section.Section + " in " + (pTargetBase + (int)section.VirtualAddress).ToString("X"));
                 }
                 int LocationDelta = (int)pTargetBase - (int)peHeader.OptionalHeader32.ImageBase;
                 if (LocationDelta != 0 && peHeader.OptionalHeader32.BaseRelocationTable.Size != 0)
                 {
-                    Console.WriteLine("delta " + LocationDelta.ToString("X"));
                     uint currentOffset = peHeader.OptionalHeader32.BaseRelocationTable.VirtualAddress;
                     var pRelocData = Kernel32.StructFromProcessMemory<PeHeaderReader.IMAGE_BASE_RELOCATION>(hProc, pTargetBase + (int)currentOffset);
                     while (pRelocData.VirtualAddress != 0)
@@ -69,10 +67,10 @@ namespace Ultimate_Steam_Acount_Manager
                                 uint addr = (uint)pTargetBase + pRelocData.VirtualAddress + (ushort)(relocation & 0xFFF);
                                 byte[] buff = new byte[4];
                                 if (!Kernel32.ReadProcessMemory(hProc, (IntPtr)addr, buff, buff.Length, out _))
-                                    throw new InjectionException("Failed to read process memory");
+                                    throw new InjectionException("Failed to read process memory", hProc, pTargetBase);
                                 buff = BitConverter.GetBytes(BitConverter.ToInt32(buff, 0) + LocationDelta);
                                 if (!Kernel32.WriteProcessMemory(hProc, (IntPtr)addr, buff, buff.Length, out _))
-                                    throw new InjectionException("Failed to write process memory");
+                                    throw new InjectionException("Failed to write process memory", hProc, pTargetBase);
                             }
                         }
                         currentOffset += pRelocData.SizeOfBlock;
@@ -86,9 +84,9 @@ namespace Ultimate_Steam_Acount_Manager
                     while(pImportDescr.Name != IntPtr.Zero)
                     {
                         string module = Kernel32.ReadCharPointerString(hProc, pTargetBase + (int)pImportDescr.Name);
-                        if (module == null) throw new InjectionException("Failed to gte module name from IAT");
+                        if (module == null) throw new InjectionException("Failed to gte module name from IAT", hProc, pTargetBase);
                         IntPtr moduleBase = Kernel32.RemoteLoadLibraryA(hProc, module);
-                        if (moduleBase == IntPtr.Zero) throw new InjectionException("Filed to load Imported DLL into remote process");
+                        if (moduleBase == IntPtr.Zero) throw new InjectionException("Filed to load Imported DLL into remote process", hProc, pTargetBase);
 
                         IntPtr pThunkRef = (IntPtr)pImportDescr.OriginalFirstThunk;
                         IntPtr pFuncRef = (IntPtr)pImportDescr.FirstThunk;
@@ -108,10 +106,10 @@ namespace Ultimate_Steam_Acount_Manager
                                 string funcName = Kernel32.ReadCharPointerString(hProc, pTargetBase + (int)ThunkRef.AddressOfData + 2); //skip the hint
                                 func = Kernel32.RemoteGetProcAddress(hProc, moduleBase, funcName);
                             }
-                            if (func == IntPtr.Zero) throw new InjectionException("Filed to get Remote function adress");
+                            if (func == IntPtr.Zero) throw new InjectionException("Filed to get Remote function adress", hProc, pTargetBase);
                             byte[] data = BitConverter.GetBytes((int)func);
                             if (!Kernel32.WriteProcessMemory(hProc, pTargetBase + (int)pFuncRef, data, data.Length, out _))
-                                throw new InjectionException("Filed to write fuction adress to target process IAT");
+                                throw new InjectionException("Filed to write fuction adress to target process IAT", hProc, pTargetBase);
                             pThunkRef += 4;
                             pFuncRef += 4;
                             ThunkRef = Kernel32.StructFromProcessMemory<Kernel32.THUNK_DATA>(hProc, pTargetBase + (int)pThunkRef);
@@ -120,8 +118,19 @@ namespace Ultimate_Steam_Acount_Manager
                         pImportDescr = Kernel32.StructFromProcessMemory<Kernel32.IMAGE_IMPORT_DESCRIPTOR>(hProc, pTargetBase + (int)currentOffset);
                     }
                 }
-
-                System.Windows.Forms.MessageBox.Show("inject at: " + pTargetBase.ToString("X"), "pls");
+                if (peHeader.OptionalHeader32.TLSTable.Size != 0)
+                {
+                    var tls = Kernel32.StructFromProcessMemory<Kernel32.IMAGE_TLS_DIRECTORY32>(hProc, pTargetBase + (int)peHeader.OptionalHeader32.TLSTable.VirtualAddress);
+                    IntPtr currentOffset = tls.AddressOfCallBacks;
+                    var funaddr = currentOffset != IntPtr.Zero ? Kernel32.StructFromProcessMemory<IntPtr>(hProc, currentOffset) : IntPtr.Zero;
+                    while (currentOffset != IntPtr.Zero && funaddr != IntPtr.Zero)
+                    {
+                        Kernel32.CallTlsCallback(hProc, pTargetBase, funaddr);
+                        currentOffset += 4;
+                        funaddr = Kernel32.StructFromProcessMemory<IntPtr>(hProc, currentOffset);
+                    }
+                }
+                Kernel32.CallTlsCallback(hProc, pTargetBase, pTargetBase + (int)peHeader.OptionalHeader32.AddressOfEntryPoint);//call DLLMAIN, im to lazy to rename it XD
             }
             return true;
         }

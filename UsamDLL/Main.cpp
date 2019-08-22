@@ -14,6 +14,46 @@
 #include <winnt.h>
 #include "cProcInfo.h"
 
+/*
+// Explained in p. 2 below
+void NTAPI tls_callback(PVOID DllHandle, DWORD dwReason, PVOID)
+{
+	if (dwReason == DLL_THREAD_ATTACH)
+	{
+		MessageBox(0, "DLL_THREAD_ATTACH", "DLL_THREAD_ATTACH", 0);
+	}
+
+	if (dwReason == DLL_PROCESS_ATTACH)
+	{
+		MessageBox(0, "DLL_PROCESS_ATTACH", "DLL_PROCESS_ATTACH", 0);
+	}
+}
+
+#ifdef _WIN64
+#pragma comment (linker, "/INCLUDE:_tls_used")  // See p. 1 below
+#pragma comment (linker, "/INCLUDE:tls_callback_func")  // See p. 3 below
+#else
+#pragma comment (linker, "/INCLUDE:__tls_used")  // See p. 1 below
+#pragma comment (linker, "/INCLUDE:_tls_callback_func")  // See p. 3 below
+#endif
+
+// Explained in p. 3 below
+#ifdef _WIN64
+#pragma const_seg(".CRT$XLF")
+EXTERN_C const
+#else
+#pragma data_seg(".CRT$XLF")
+EXTERN_C
+#endif
+PIMAGE_TLS_CALLBACK tls_callback_func = tls_callback;
+#ifdef _WIN64
+#pragma const_seg()
+#else
+#pragma data_seg()
+#endif //_WIN64
+*/ //for testing injector
+
+
 #define INRANGE(x,a,b)    (x >= a && x <= b)
 #define getBits( x )    (INRANGE((x&(~0x20)),'A','F') ? ((x&(~0x20)) - 'A' + 0xa) : (INRANGE(x,'0','9') ? x - '0' : 0))
 #define getByte( x )    (getBits(x[0]) << 4 | getBits(x[1]))
@@ -163,6 +203,8 @@ enum ERRORS{
 
 DWORD WINAPI MainThread(LPVOID hModule) {
 	printf("injected\n");
+	Sleep(1000);
+	return 0;
 	while (!GetModuleHandleA("steamui.dll")) Sleep(100);
 	Sleep(1000);
 	DWORD clickHandler = FindPattern("steamui.dll", "55 8B EC 53 8B 1D ?? ?? ?? ?? 56 57 8B 7D 08 8B F1 68 FF FF FF 7F 68 ?? ?? ?? ?? 57 FF D3 83 C4 0C 85 C0 75 12 8D 8E EC FE FF FF E8 ?? ?? ?? ?? 5F 5E 5B 5D C2 04 00");
@@ -231,9 +273,9 @@ DWORD WINAPI MainThread(LPVOID hModule) {
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
 	if (ul_reason_for_call == DLL_PROCESS_ATTACH) {
-		/*AllocConsole();
+		AllocConsole();
 		freopen("CONOUT$", "w", stdout);
-		freopen("CONIN$", "r", stdin);*/
+		freopen("CONIN$", "r", stdin);
 		CreateThread(0, 0, MainThread, hModule, 0, 0);
 	}
 	return TRUE;

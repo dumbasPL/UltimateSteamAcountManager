@@ -282,7 +282,7 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
                 0x5D,                           //pop   ebp
                 0xC2, 0x04, 0x00                //ret   4
             };
-            Array.Copy(BitConverter.GetBytes((int)callback), 0, shellcode, 13, 4);
+            Array.Copy(BitConverter.GetBytes((int)callback), 0, shellcode, 12, 4);
             IntPtr pMem = VirtualAllocEx(hProcess, IntPtr.Zero, (uint)shellcode.Length, AllocationType.Commit | AllocationType.Reserve, MemoryProtection.ExecuteReadWrite);
             if (pMem == IntPtr.Zero) return;
             if (!WriteProcessMemory(hProcess, pMem, shellcode, shellcode.Length, out _)) return;
@@ -290,6 +290,17 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
             WaitForSingleObject(hThread, 5000);
             CloseHandle(hThread);
             VirtualFreeEx(hProcess, pMem, 0, AllocationType.Release);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct IMAGE_TLS_DIRECTORY32
+        {
+            public IntPtr StartAddressOfRawData;
+            public IntPtr EndAddressOfRawData;
+            public IntPtr AddressOfIndex;             // PDWORD
+            public IntPtr AddressOfCallBacks;         // PIMAGE_TLS_CALLBACK *
+            public uint SizeOfZeroFill;
+            public uint Characteristics;
         }
     }
 }

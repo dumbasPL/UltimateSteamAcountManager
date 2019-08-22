@@ -45,7 +45,7 @@ namespace Ultimate_Steam_Acount_Manager
 
         private void Button1_Click_1(object sender, EventArgs e)
         {
-            var p = Process.GetProcessesByName("notepad");
+            var p = Process.GetProcessesByName("steam");
             Injection.Inject(p[0], "..\\..\\Release\\UsamDLL.dll");
         }
 
