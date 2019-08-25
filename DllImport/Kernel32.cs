@@ -132,7 +132,7 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
 
         [DllImport("kernel32")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool GetExitCodeThread(IntPtr hThread, out uint lpExitCode);
+        public static extern bool GetExitCodeThread(IntPtr hThread, out IntPtr lpExitCode);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -148,10 +148,10 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
             if (Injector == IntPtr.Zero) return IntPtr.Zero;
             IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, Injector, AllocMem, 0, out _);
             WaitForSingleObject(hThread, 5000);
-            GetExitCodeThread(hThread, out uint hModule);
+            GetExitCodeThread(hThread, out IntPtr hModule);
             CloseHandle(hThread);
             VirtualFreeEx(hProcess, AllocMem, 0, AllocationType.Release);
-            return (IntPtr)hModule;
+            return hModule;
         }
 
         private static IntPtr _GetProcAddress = IntPtr.Zero;
@@ -182,10 +182,10 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
             if (!WriteProcessMemory(hProcess, pMem, buff, buff.Length, out _)) return IntPtr.Zero;
             IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, pMem, pMem + shellcode.Length, 0, out _);
             WaitForSingleObject(hThread, 5000);
-            GetExitCodeThread(hThread, out uint address);
+            GetExitCodeThread(hThread, out IntPtr address);
             CloseHandle(hThread);
             VirtualFreeEx(hProcess, pMem, 0, AllocationType.Release);
-            return (IntPtr)address;
+            return address;
         }
 
         public static IntPtr RemoteGetProcAddress(IntPtr hProcess, IntPtr module, uint ordinal)
@@ -209,10 +209,10 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
             if (!WriteProcessMemory(hProcess, pMem, shellcode, shellcode.Length, out _)) return IntPtr.Zero;
             IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, pMem, (IntPtr)ordinal, 0, out _);
             WaitForSingleObject(hThread, 5000);
-            GetExitCodeThread(hThread, out uint address);
+            GetExitCodeThread(hThread, out IntPtr address);
             CloseHandle(hThread);
             VirtualFreeEx(hProcess, pMem, 0, AllocationType.Release);
-            return (IntPtr)address;
+            return address;
         }
 
         [StructLayout(LayoutKind.Explicit)]
