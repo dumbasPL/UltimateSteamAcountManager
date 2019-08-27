@@ -256,7 +256,7 @@ DWORD WINAPI MainThread(LPVOID hModule) {
 	((int(__thiscall*)(void*))RetardedFunction3)((void*)TwoFactorCodeChallengeObject);
 	printf("done\n");
 	Sleep(1000);
-	FreeLibraryAndExitThread((HMODULE)hModule, 1);
+	//FreeLibraryAndExitThread((HMODULE)hModule, 1);
 	return 0;
 }
 

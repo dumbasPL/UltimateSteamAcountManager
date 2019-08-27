@@ -53,10 +53,10 @@
             this.testToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.removeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.editToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.copyMobileAuthenticatorCodeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             this.trayStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.exitToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
-            this.copyMobileAuthenticatorCodeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.groupBox1.SuspendLayout();
@@ -95,20 +95,20 @@
             this.changePasswordToolStripMenuItem,
             this.removeEncryptionToolStripMenuItem});
             this.encryptionToolStripMenuItem.Name = "encryptionToolStripMenuItem";
-            this.encryptionToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.encryptionToolStripMenuItem.Size = new System.Drawing.Size(135, 22);
             this.encryptionToolStripMenuItem.Text = "Encryption";
             // 
             // setupEncryptionToolStripMenuItem
             // 
             this.setupEncryptionToolStripMenuItem.Name = "setupEncryptionToolStripMenuItem";
-            this.setupEncryptionToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.setupEncryptionToolStripMenuItem.Size = new System.Drawing.Size(177, 22);
             this.setupEncryptionToolStripMenuItem.Text = "Setup encryption";
             this.setupEncryptionToolStripMenuItem.Click += new System.EventHandler(this.SetupEncryptionToolStripMenuItem_Click);
             // 
             // changePasswordToolStripMenuItem
             // 
             this.changePasswordToolStripMenuItem.Name = "changePasswordToolStripMenuItem";
-            this.changePasswordToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.changePasswordToolStripMenuItem.Size = new System.Drawing.Size(177, 22);
             this.changePasswordToolStripMenuItem.Text = "Change password";
             this.changePasswordToolStripMenuItem.Visible = false;
             this.changePasswordToolStripMenuItem.Click += new System.EventHandler(this.ChangePasswordToolStripMenuItem_Click);
@@ -116,7 +116,7 @@
             // removeEncryptionToolStripMenuItem
             // 
             this.removeEncryptionToolStripMenuItem.Name = "removeEncryptionToolStripMenuItem";
-            this.removeEncryptionToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.removeEncryptionToolStripMenuItem.Size = new System.Drawing.Size(177, 22);
             this.removeEncryptionToolStripMenuItem.Text = "Remove encryption";
             this.removeEncryptionToolStripMenuItem.Visible = false;
             this.removeEncryptionToolStripMenuItem.Click += new System.EventHandler(this.RemoveEncryptionToolStripMenuItem_Click);
@@ -125,7 +125,7 @@
             // 
             this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
             this.exitToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Alt | System.Windows.Forms.Keys.F4)));
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.exitToolStripMenuItem.Size = new System.Drawing.Size(135, 22);
             this.exitToolStripMenuItem.Text = "Exit";
             this.exitToolStripMenuItem.Click += new System.EventHandler(this.ExitToolStripMenuItem_Click);
             // 
@@ -268,22 +268,30 @@
             // testToolStripMenuItem
             // 
             this.testToolStripMenuItem.Name = "testToolStripMenuItem";
-            this.testToolStripMenuItem.Size = new System.Drawing.Size(117, 22);
+            this.testToolStripMenuItem.Size = new System.Drawing.Size(245, 22);
             this.testToolStripMenuItem.Text = "Login";
+            this.testToolStripMenuItem.Click += new System.EventHandler(this.TestToolStripMenuItem_Click);
             // 
             // removeToolStripMenuItem
             // 
             this.removeToolStripMenuItem.Name = "removeToolStripMenuItem";
-            this.removeToolStripMenuItem.Size = new System.Drawing.Size(117, 22);
+            this.removeToolStripMenuItem.Size = new System.Drawing.Size(245, 22);
             this.removeToolStripMenuItem.Text = "Remove";
             this.removeToolStripMenuItem.Click += new System.EventHandler(this.RemoveToolStripMenuItem_Click);
             // 
             // editToolStripMenuItem
             // 
             this.editToolStripMenuItem.Name = "editToolStripMenuItem";
-            this.editToolStripMenuItem.Size = new System.Drawing.Size(117, 22);
+            this.editToolStripMenuItem.Size = new System.Drawing.Size(245, 22);
             this.editToolStripMenuItem.Text = "Edit";
             this.editToolStripMenuItem.Click += new System.EventHandler(this.EditToolStripMenuItem_Click);
+            // 
+            // copyMobileAuthenticatorCodeToolStripMenuItem
+            // 
+            this.copyMobileAuthenticatorCodeToolStripMenuItem.Name = "copyMobileAuthenticatorCodeToolStripMenuItem";
+            this.copyMobileAuthenticatorCodeToolStripMenuItem.Size = new System.Drawing.Size(245, 22);
+            this.copyMobileAuthenticatorCodeToolStripMenuItem.Text = "Copy mobile authenticator code";
+            this.copyMobileAuthenticatorCodeToolStripMenuItem.Click += new System.EventHandler(this.CopyMobileAuthenticatorCodeToolStripMenuItem_Click);
             // 
             // notifyIcon1
             // 
@@ -308,13 +316,6 @@
             this.exitToolStripMenuItem1.Size = new System.Drawing.Size(68, 22);
             this.exitToolStripMenuItem1.Text = "Exit";
             this.exitToolStripMenuItem1.Click += new System.EventHandler(this.ExitToolStripMenuItem1_Click);
-            // 
-            // copyMobileAuthenticatorCodeToolStripMenuItem
-            // 
-            this.copyMobileAuthenticatorCodeToolStripMenuItem.Name = "copyMobileAuthenticatorCodeToolStripMenuItem";
-            this.copyMobileAuthenticatorCodeToolStripMenuItem.Size = new System.Drawing.Size(245, 22);
-            this.copyMobileAuthenticatorCodeToolStripMenuItem.Text = "Copy mobile authenticator code";
-            this.copyMobileAuthenticatorCodeToolStripMenuItem.Click += new System.EventHandler(this.CopyMobileAuthenticatorCodeToolStripMenuItem_Click);
             // 
             // MainWindow
             // 

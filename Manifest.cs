@@ -17,6 +17,12 @@ namespace Ultimate_Steam_Acount_Manager
         [JsonProperty("accounts")]
         public List<ManifestEntry> accounts;
 
+        [JsonProperty("loginMethod")]
+        public LoginMethod loginMethod;
+
+        [JsonProperty("steamArguments")]
+        public string steamArguments;
+
         private static Manifest _manifest = null;
 
         private static readonly string filename = "manifest.json";
@@ -26,6 +32,8 @@ namespace Ultimate_Steam_Acount_Manager
         {
             accounts = new List<ManifestEntry>();
             encrypted = false;
+            loginMethod = LoginMethod.Parameter;
+            steamArguments = "";
         }
 
         public static Manifest GetManifest()

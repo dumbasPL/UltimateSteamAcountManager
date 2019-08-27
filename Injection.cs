@@ -12,8 +12,16 @@ namespace Ultimate_Steam_Acount_Manager
 {
     class Injection
     {
-
-        public static bool Inject(Process process, string dll, string user, string pass, string guard = null)
+        /// <summary>
+        /// Inject the UsamDll to steam to fill out login forms
+        /// </summary>
+        /// <param name="process"></param>
+        /// <param name="dll"></param>
+        /// <param name="user"></param>
+        /// <param name="pass"></param>
+        /// <param name="guard"></param>
+        /// <exception cref="InjectionException"></exception>
+        public static void Inject(Process process, string dll, string user, string pass, string guard = null)
         {
             IntPtr hProc = Kernel32.OpenProcess(process, Kernel32.ProcessAccessFlags.All);
             if (hProc == IntPtr.Zero) throw new InjectionException("Failed to open process " + Marshal.GetLastWin32Error());
@@ -144,7 +152,6 @@ namespace Ultimate_Steam_Acount_Manager
                 }
                 Kernel32.CallTlsCallback(hProc, pTargetBase, pTargetBase + (int)peHeader.OptionalHeader32.AddressOfEntryPoint);//call DLLMAIN, im to lazy to rename it XD
             }
-            return true;
         }
 
         public class InjectionException : Exception

@@ -7,7 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using SteamAuth;
 using System.Threading;
 using System.Runtime.InteropServices;
 using System.IO;
@@ -16,6 +15,11 @@ using Microsoft.Win32;
 
 namespace Ultimate_Steam_Acount_Manager
 {
+    public enum LoginMethod
+    {
+        Injectrion,
+        Parameter
+    }
     public partial class MainWindow : Form
     {
         private delegate void SafeCallDelegate(List<SteamAccount> accounts);
@@ -44,19 +48,42 @@ namespace Ultimate_Steam_Acount_Manager
 
         private void ExitToolStripMenuItem_Click(object sender, EventArgs e) => Application.Exit();
 
-        private void Button1_Click_1(object sender, EventArgs e)
+        private void Button1_Click_1(object sender, EventArgs e) =>
+            Login(Manifest.GetManifest().loginMethod);
+
+        private void Login(LoginMethod method)
         {
-            using (RegistryKey key = Registry.CurrentUser.OpenSubKey("Software\\Valve\\Steam"))
+            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam"))
             {
                 if (key != null)
                 {
-                    Process p = Process.Start(new ProcessStartInfo()
+                    ProcessStartInfo startInfo = new ProcessStartInfo()
                     {
                         FileName = key.GetValue("SteamExe").ToString(),
                         WorkingDirectory = key.GetValue("SteamPath").ToString(),
-                    });
-                    Injection.Inject(p, "..\\..\\Release\\UsamDLL.dll", clickedAcc.Login, clickedAcc.Password, clickedAcc.Get2FACode());
+                        Arguments = Manifest.GetManifest().steamArguments
+                    };
+                    switch (method)
+                    {
+                        case LoginMethod.Injectrion:
+                            try
+                            {
+                                Injection.Inject(Process.Start(startInfo), "UsamDLL.dll", clickedAcc.Login, clickedAcc.Password, clickedAcc.Get2FACode());
+                            }
+                            catch (Injection.InjectionException e)
+                            {
+                                MessageBox.Show(e.Message, "Injectrion error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                            break;
+                        case LoginMethod.Parameter:
+                            startInfo.Arguments += " -login " + clickedAcc.Login + " " + clickedAcc.Password;
+                            Process.Start(startInfo);
+                            string factor = clickedAcc.Get2FACode();
+                            if (factor != null) Clipboard.SetText(factor);
+                            break;
+                    }
                 }
+                else MessageBox.Show("Failed to get steam executable path form registry", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -353,9 +380,7 @@ namespace Ultimate_Steam_Acount_Manager
         private void CopyMobileAuthenticatorCodeToolStripMenuItem_Click(object sender, EventArgs e) => 
             Clipboard.SetText(clickedAcc.Get2FACode());
 
-        //steamui.dll + 825ADC
-
-        //55 8B EC 53 8B 1D ?? ?? ?? ?? 56 57 8B 7D 08 8B F1 68 FF FF FF 7F 68 ?? ?? ?? ?? 57 FF D3 83 C4 0C 85 C0 75 12 8D 8E EC FE FF FF E8 ?? ?? ?? ?? 5F 5E 5B 5D C2 04 00
-
+        private void TestToolStripMenuItem_Click(object sender, EventArgs e) =>
+            Login(Manifest.GetManifest().loginMethod);
     }
 }
