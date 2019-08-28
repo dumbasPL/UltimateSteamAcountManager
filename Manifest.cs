@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.IO;
+using Microsoft.Win32;
 
 namespace Ultimate_Steam_Acount_Manager
 {
@@ -23,6 +24,12 @@ namespace Ultimate_Steam_Acount_Manager
         [JsonProperty("steamArguments")]
         public string steamArguments;
 
+        [JsonProperty("steamPath")]
+        public string steamPath;
+
+        [JsonProperty("retryOnCrash")]
+        public bool retryOnCrash;
+
         private static Manifest _manifest = null;
 
         private static readonly string filename = "manifest.json";
@@ -34,6 +41,12 @@ namespace Ultimate_Steam_Acount_Manager
             encrypted = false;
             loginMethod = LoginMethod.Parameter;
             steamArguments = "";
+            steamPath = "";
+            using(RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam"))
+            {
+                if (key != null) steamPath = key.GetValue("SteamExe").ToString() ?? "";
+            }
+            retryOnCrash = true;
         }
 
         public static Manifest GetManifest()
@@ -43,7 +56,7 @@ namespace Ultimate_Steam_Acount_Manager
             return _manifest;
         }
 
-        private bool Save()
+        public bool Save()
         {
             string data = JsonConvert.SerializeObject(this);
             try

@@ -49,42 +49,48 @@ namespace Ultimate_Steam_Acount_Manager
         private void ExitToolStripMenuItem_Click(object sender, EventArgs e) => Application.Exit();
 
         private void Button1_Click_1(object sender, EventArgs e) =>
-            Login(Manifest.GetManifest().loginMethod);
+            Login();
 
-        private void Login(LoginMethod method)
+        private void Login()
         {
-            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam"))
+            if (clickedAcc == null) return;
+            Manifest manifest = Manifest.GetManifest();
+            ProcessStartInfo startInfo = new ProcessStartInfo()
             {
-                if (key != null)
-                {
-                    ProcessStartInfo startInfo = new ProcessStartInfo()
+                FileName = manifest.steamPath,
+                WorkingDirectory = Path.GetDirectoryName(manifest.steamPath),
+                Arguments = manifest.steamArguments
+            };
+            switch (manifest.loginMethod)
+            {
+                case LoginMethod.Injectrion:
+                    try
                     {
-                        FileName = key.GetValue("SteamExe").ToString(),
-                        WorkingDirectory = key.GetValue("SteamPath").ToString(),
-                        Arguments = Manifest.GetManifest().steamArguments
-                    };
-                    switch (method)
-                    {
-                        case LoginMethod.Injectrion:
-                            try
-                            {
-                                Injection.Inject(Process.Start(startInfo), "UsamDLL.dll", clickedAcc.Login, clickedAcc.Password, clickedAcc.Get2FACode());
-                            }
-                            catch (Injection.InjectionException e)
-                            {
-                                MessageBox.Show(e.Message, "Injectrion error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                            break;
-                        case LoginMethod.Parameter:
-                            startInfo.Arguments += " -login " + clickedAcc.Login + " " + clickedAcc.Password;
-                            Process.Start(startInfo);
-                            string factor = clickedAcc.Get2FACode();
-                            if (factor != null) Clipboard.SetText(factor);
-                            break;
+                        Process proc = new Process();
+                        proc.StartInfo = startInfo;
+                        proc.EnableRaisingEvents = true;
+                        proc.Start();
+                        Injection.Inject(proc, "UsamDLL.dll", clickedAcc.Login, clickedAcc.Password, clickedAcc.Get2FACode());
+                        proc.Exited += Proc_Exited;
                     }
-                }
-                else MessageBox.Show("Failed to get steam executable path form registry", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    catch (Injection.InjectionException e)
+                    {
+                        MessageBox.Show(e.Message, "Injectrion error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    break;
+                case LoginMethod.Parameter:
+                    startInfo.Arguments += " -login " + clickedAcc.Login + " " + clickedAcc.Password;
+                    Process.Start(startInfo);
+                    string factor = clickedAcc.Get2FACode();
+                    if (factor != null) Clipboard.SetText(factor);
+                    break;
             }
+        }
+
+        private void Proc_Exited(object sender, EventArgs e)
+        {
+            if(Manifest.GetManifest().retryOnCrash && sender != null && ((Process)sender).ExitCode != 0)
+                Login();
         }
 
         private void AddAccountToolStripMenuItem_Click(object sender, EventArgs e)
@@ -141,6 +147,11 @@ namespace Ultimate_Steam_Acount_Manager
                     }));
                 if (accounts == null) return;
                 RenderAccounts(accounts);
+                if(dataGridView1.SelectedRows.Count > 0)
+                {
+                    string name = (string)dataGridView1.SelectedRows[0].Cells["name"].Value;
+                    clickedAcc = Util.GetAccountByName(accounts, name);
+                }
             }).Start();
         }
 
@@ -380,7 +391,22 @@ namespace Ultimate_Steam_Acount_Manager
         private void CopyMobileAuthenticatorCodeToolStripMenuItem_Click(object sender, EventArgs e) => 
             Clipboard.SetText(clickedAcc.Get2FACode());
 
-        private void TestToolStripMenuItem_Click(object sender, EventArgs e) =>
-            Login(Manifest.GetManifest().loginMethod);
+        private void TestToolStripMenuItem_Click(object sender, EventArgs e) => Login();
+
+        private void SettingsToolStripMenuItem_Click(object sender, EventArgs e) => OpenSettings();
+
+        private void OpenSettings()
+        {
+            SettingsForm settingsForm = new SettingsForm();
+            settingsForm.ShowDialog();
+            settingsForm.Dispose();
+        }
+
+        private void MainWindow_Shown(object sender, EventArgs e)
+        {
+            if ((string.IsNullOrWhiteSpace(Manifest.GetManifest().steamPath) || !File.Exists(Manifest.GetManifest().steamPath)) 
+                && MessageBox.Show("Steam path is invalid, please change it in settings.", "Warning",
+                MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) == DialogResult.OK) OpenSettings();
+        }
     }
 }
