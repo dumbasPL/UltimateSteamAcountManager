@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace Ultimate_Steam_Acount_Manager
 {
@@ -69,6 +70,13 @@ namespace Ultimate_Steam_Acount_Manager
             }
             int years = Convert.ToInt32(Math.Floor((double)ts.Days / 365));
             return years <= 1 ? "one year ago" : years + " years ago";
+        }
+
+        public static TDelegate GetVirtualFunction<TDelegate>(IntPtr obj, int index)
+        {
+            IntPtr vTable = Marshal.ReadIntPtr(obj, 0);
+            IntPtr function = Marshal.ReadIntPtr(vTable, index * Marshal.SizeOf<IntPtr>());
+            return Marshal.GetDelegateForFunctionPointer<TDelegate>(function);
         }
 
     }

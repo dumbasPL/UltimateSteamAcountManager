@@ -29,6 +29,12 @@ namespace Ultimate_Steam_Acount_Manager
         [JsonProperty("comment")]
         public string Comment { get; set; }
 
+        [JsonProperty("SteamID64")]
+        public long SteamID64 { get; set; }
+
+        [JsonProperty("SteamLevel")]
+        public int SteamLevel { get; set; }
+
         private SteamGuardAccount SteamGuardAccount;
 
         public ManifestEntry ManifestEntry;

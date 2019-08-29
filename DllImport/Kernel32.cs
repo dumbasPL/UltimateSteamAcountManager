@@ -117,7 +117,7 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
         }
 
         [DllImport("kernel32", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
-        static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+        public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
         public static extern IntPtr GetModuleHandle(string lpModuleName);
@@ -302,5 +302,11 @@ namespace Ultimate_Steam_Acount_Manager.DllImport
             public uint SizeOfZeroFill;
             public uint Characteristics;
         }
+
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr LoadLibrary(string dllToLoad);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern IntPtr GetCurrentProcess();
     }
 }

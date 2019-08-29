@@ -12,6 +12,9 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Diagnostics;
 using Microsoft.Win32;
+using RegistryUtils;
+using Gameloop.Vdf;
+using Ultimate_Steam_Acount_Manager.DllImport;
 
 namespace Ultimate_Steam_Acount_Manager
 {
@@ -27,6 +30,7 @@ namespace Ultimate_Steam_Acount_Manager
         private string password;
         private SteamAccount clickedAcc;
         private List<SteamAccount> accounts;
+        private RegistryMonitor registryMonitor;
 
         [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
@@ -48,8 +52,11 @@ namespace Ultimate_Steam_Acount_Manager
 
         private void ExitToolStripMenuItem_Click(object sender, EventArgs e) => Application.Exit();
 
-        private void Button1_Click_1(object sender, EventArgs e) =>
-            Login();
+        private void Button1_Click_1(object sender, EventArgs e)
+        {
+            //MessageBox.Show(SteamAPI.GetCurrentSteamName());
+            UpdateLiveSteamData();
+        }
 
         private void Login()
         {
@@ -177,7 +184,89 @@ namespace Ultimate_Steam_Acount_Manager
             bool encrypted = Manifest.GetManifest().encrypted;
             UpdatePasswordBar(encrypted);
             if (encrypted) PromptForPassword();
+            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam\ActiveProcess"))
+            {
+                if(key != null)
+                {
+                    registryMonitor = new RegistryMonitor(key)
+                    {
+                        RegChangeNotifyFilter = RegChangeNotifyFilter.Value
+                    };
+                    registryMonitor.RegChanged += RegistryMonitor_RegChanged;
+                    registryMonitor.Start();
+                }
+            }
+            
             RefreshAccounts();
+        }
+
+        private void RegistryMonitor_RegChanged(object sender, EventArgs e) => UpdateLiveSteamData();
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate uint fntest();
+
+        private void UpdateLiveSteamData()
+        {
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam\ActiveProcess"))
+                {
+                    if (key == null) throw new Exception("key si null");
+                    long steamID3 = long.Parse(key.GetValue("ActiveUser", 0).ToString());
+                    if (steamID3 == 0) throw new Exception("steam id invalid");
+                    long steamID64 = steamID3 + 76561197960265728L; //steam id 3 to 64
+                    string loginusers = Path.Combine(Path.GetDirectoryName(Manifest.GetManifest().steamPath), @"config\loginusers.vdf");
+                    var users = VdfConvert.Deserialize(File.ReadAllText(loginusers));
+                    var user = users.Value[steamID64.ToString()];
+                    SteamAccount steamAccount = Util.GetAccountByName(accounts, user.Value<string>("AccountName"));
+                    steamAccount.LastName = user.Value<string>("PersonaName");
+                    steamAccount.LastLogin = SteamAuth.Util.GetSystemUnixTime();
+                    steamAccount.SteamID64 = steamID64;
+                    Manifest.GetManifest().UpdateAccount(steamAccount.ManifestEntry, steamAccount, password);
+                }
+            }
+            catch (Exception) { }
+
+            try
+            {
+                SteamAPI.ISteamUser user = SteamAPI.GetSteamClient().GetISteamUser();
+
+                //byte[] data = new byte[] {
+                //    0x55,                        //push ebp
+                //    0x8B, 0xEC,                  //mov ebp,esp
+                //    0x52,                        //push edx
+                //    0xB8, 0x00, 0x00, 0x00, 0x00,//mov eax, 0x69696969
+                //    0xB9, 0x00, 0x00, 0x00, 0x00,//mov ecx, 0x12345678
+                //    0xFF, 0xD0,                  //call eax
+                //    0x5A,                        //pop edx
+                //    0x5D,                        //pop ebp
+                //    0xC3,                        //ret
+                //};
+
+                //Array.Copy(BitConverter.GetBytes((int)user.GetSteamID()), 0, data, 5, 4);
+                //Array.Copy(BitConverter.GetBytes((int)user.baseObj), 0, data, 10, 4);
+
+                //IntPtr mem = Kernel32.VirtualAllocEx(
+                //    Kernel32.GetCurrentProcess(),
+                //    IntPtr.Zero,
+                //    (uint)data.Length,
+                //    Kernel32.AllocationType.Commit | Kernel32.AllocationType.Reserve,
+                //    Kernel32.MemoryProtection.ExecuteReadWrite);
+                //Kernel32.WriteProcessMemory(Kernel32.GetCurrentProcess(), mem, data, data.Length, out _);
+                //fntest test = Marshal.GetDelegateForFunctionPointer<fntest>(mem);
+                //Console.WriteLine(mem.ToString("X"));
+                //MessageBox.Show("XD");
+
+                Console.WriteLine(user.GetSteamID().ToString("X"));
+
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+
+
         }
 
         private void UpdatePasswordBar(bool encrypted)
