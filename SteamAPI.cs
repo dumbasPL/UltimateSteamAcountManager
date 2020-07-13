@@ -114,18 +114,50 @@ namespace Ultimate_Steam_Acount_Manager
         public class ISteamUser
         {
             public IntPtr baseObj;
+            private static customGetSteamId fnGetSteamID;
 
             public ISteamUser(IntPtr baseObj)
             {
                 this.baseObj = baseObj;
             }
 
-            //[return: MarshalAs(UnmanagedType.U8)]
-            [UnmanagedFunctionPointer(CallingConvention.ThisCall)]
-            private delegate IntPtr fnGetSteamID(IntPtr thisPtr);
-            public IntPtr GetSteamID()
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            private delegate void customGetSteamId(IntPtr obj, out UInt64 val);
+            public ulong GetSteamID()
             {
-                return Util.GetVirtualFunction<fnGetSteamID>(baseObj, 2)(baseObj);
+                if(fnGetSteamID == null)
+                {
+                    byte[] data = new byte[] {
+                        0x55,               // push ebp
+                        0x8B, 0xEC,         // mov  ebp, esp
+                        0x83, 0xEC, 0x08,   // sub  esp, 8
+                        0x8D, 0x45, 0xF8,   // lea  eax, [ebp - 8]
+                        0x50,               // push eax
+                        0x8B, 0x4D, 0x08,   // mov  ecx, [ebp + 8]
+                        0x8B, 0x11,         // mov  edx, [ecx]
+                        0x8B, 0x4D, 0x08,   // mov  ecx, [ebp + 8]
+                        0x8B, 0x42, 0x08,   // mov  eax, [edx + 8]
+                        0xFF, 0xD0,         // call eax
+                        0x8B, 0x4D, 0x0C,   // mov  ecx, [ebp + C]
+                        0x8B, 0x10,         // mov  edx, [eax]
+                        0x89, 0x11,         // mov  [ecx], edx
+                        0x8B, 0x40, 0x04,   // mov  eax, [eax + 4]
+                        0x89, 0x41, 0x04,   // mov  [ecx + 4], eax
+                        0x8B, 0xE5,         // mov  esp, ebp
+                        0x5D,               // pop  ebp
+                        0xC3,               // ret
+                    };
+                    IntPtr mem = Kernel32.VirtualAllocEx(
+                        Kernel32.GetCurrentProcess(),
+                        IntPtr.Zero,
+                        (uint)data.Length,
+                        Kernel32.AllocationType.Commit | Kernel32.AllocationType.Reserve,
+                        Kernel32.MemoryProtection.ExecuteReadWrite);
+                    Kernel32.WriteProcessMemory(Kernel32.GetCurrentProcess(), mem, data, data.Length, out _);
+                    fnGetSteamID = Marshal.GetDelegateForFunctionPointer<customGetSteamId>(mem);
+                }
+                fnGetSteamID(baseObj, out ulong val);
+                return val;
             }
         }
 
